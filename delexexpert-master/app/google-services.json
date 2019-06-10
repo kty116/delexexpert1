@@ -1,0 +1,56 @@
+{
+  "project_info": {
+    "project_number": "699005848961",
+    "firebase_url": "https://delexexpert-73bd3.firebaseio.com",
+    "project_id": "delexexpert-73bd3",
+    "storage_bucket": "delexexpert-73bd3.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:699005848961:android:2a495086b354261a",
+        "android_client_info": {
+          "package_name": "com.delex.delexexpert"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "699005848961-rh1bv8q397l22nbthnb83g8048bcomdc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.delex.delexexpert",
+            "certificate_hash": "51ee5fd05645acbf87232c83898b717b09a0e507"
+          }
+        },
+        {
+          "client_id": "699005848961-mpsmlb6hr5jlg7nhnm2ouvfl4bnnrhkd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.delex.delexexpert",
+            "certificate_hash": "a4b560d93babd1ee214478d2f77c5ffd700eb846"
+          }
+        },
+        {
+          "client_id": "699005848961-c97c5ghok8djn3e8kfoqlssda3pdpuiv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCPNk4-GuG39KY4xLx1EWiNh_F9d2o9CY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "699005848961-c97c5ghok8djn3e8kfoqlssda3pdpuiv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
