@@ -6,8 +6,8 @@ android {
         applicationId "com.delex.delexexpert"
         minSdkVersion 17
         targetSdkVersion 28
-        versionCode 9
-        versionName "1.2.1"
+        versionCode 15
+        versionName "1.2.7"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -49,6 +49,8 @@ dependencies {
     implementation 'com.google.android.gms:play-services-location:16.0.0'  //위치데이터
 
     implementation 'org.greenrobot:eventbus:3.0.0' //이벤트버스
+
+    implementation 'com.google.firebase:firebase-database:16.1.0'
 }
 
 apply plugin: 'com.google.gms.google-services'

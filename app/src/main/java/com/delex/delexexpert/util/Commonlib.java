@@ -42,6 +42,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.View;
+import android.view.ViewDebug;
 import android.view.Window;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -49,11 +50,15 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.delex.delexexpert.R;
+import com.delex.delexexpert.activity.MainActivity3;
+import com.delex.delexexpert.firebase.DataBase;
 import com.delex.delexexpert.retrofit.RetrofitLib;
 import com.delex.delexexpert.retrofit.RetrofitUtil;
 import com.delex.delexexpert.service.LocationService;
+import com.delex.delexexpert.userSession.ExpertSessionManager;
 import com.gun0912.tedpermission.PermissionListener;
 import com.gun0912.tedpermission.TedPermission;
 
@@ -151,6 +156,21 @@ public class Commonlib {
     }
 
     /**
+     * GPS 체크
+     *
+     * @return
+     */
+    public static boolean locationOnOffCheck(Context context) {
+        boolean gpsEnable = false;
+        LocationManager manager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            gpsEnable = true;
+        }
+
+        return gpsEnable;
+    }
+
+    /**
      * 실행중인 서비스 체크
      *
      * @return
@@ -163,6 +183,79 @@ public class Commonlib {
                 return true;
         }
         return false;
+    }
+
+
+    public static void serviceCheckAndStart(Context context) {
+        DataBase dataBase = new DataBase(context);
+        ExpertSessionManager expertSessionManager = new ExpertSessionManager(context);
+
+        if (!isServiceRunning(context)) {  //서비스 실행중 아님
+
+        String userId = expertSessionManager.getUserId();
+        String carNum = expertSessionManager.getCarNum();
+
+        dataBase.writeStateData(false, false, false, "userId - " + userId + " / carNum - " + carNum, "");
+
+        if (userId != null && !userId.isEmpty() && carNum != null && !carNum.isEmpty()) {
+            startService(context, expertSessionManager);
+        } else {
+            dataBase.writeStateData(false, false, false, "유저 정보 없음 로그아웃 상태", "");
+            openApp(context, context.getPackageName());
+            Toast.makeText(context, "로그인을 해주세요!", Toast.LENGTH_LONG).show();
+        }
+//        }else {
+//            Log.d(TAG, "serviceCheckAndStart: 서비스 실행중");
+        }
+    }
+
+    public static String getPhoneNumber(Context context) {
+        TelephonyManager telManager = (TelephonyManager) context.getSystemService(context.TELEPHONY_SERVICE);
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_NUMBERS) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+        }
+        String phoneNum = telManager.getLine1Number();
+        if (phoneNum.startsWith("+82")) {
+            phoneNum = phoneNum.replace("+82", "0");
+        }
+        return phoneNum;
+    }
+
+    public static boolean openApp(Context context, String packageName) {
+        PackageManager manager = context.getPackageManager();
+        try {
+            Intent i = manager.getLaunchIntentForPackage(packageName);
+            if (i == null) {
+                throw new PackageManager.NameNotFoundException();
+            }
+            i.addCategory(Intent.CATEGORY_LAUNCHER);
+            context.startActivity(i);
+            return true;
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+            return false;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public static void startService(Context context, ExpertSessionManager expertSessionManager) {
+        Intent intent = new Intent(context, LocationService.class);
+        String locationSetting = expertSessionManager.getLocationSetting();
+        if (locationSetting != null && !locationSetting.isEmpty()) {
+            if (locationSetting.equals("출근")) {
+                intent.setAction(LocationService.ACTION_START_DATA);
+            } else {
+                intent.setAction(LocationService.ACTION_STOP_DATA);
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {  //API 26버전 이상
+                context.startForegroundService(intent);
+            } else {
+                context.startService(intent);
+            }
+        }
+
     }
 
 

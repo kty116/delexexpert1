@@ -20,12 +20,13 @@ import android.util.Log;
 
 import com.delex.delexexpert.activity.MainActivity3;
 import com.delex.delexexpert.R;
-import com.delex.delexexpert.application.BaseApplication;
 import com.delex.delexexpert.commonLib.TinyDB;
 import com.delex.delexexpert.event.CurrentLocationExpertEvent;
 import com.delex.delexexpert.event.ExpertEvent;
 import com.delex.delexexpert.event.LastLocationExpertEvent;
 import com.delex.delexexpert.event.LocationServiceFinishExpertEvent;
+import com.delex.delexexpert.firebase.DataBase;
+import com.delex.delexexpert.firebase.StateModel;
 import com.delex.delexexpert.model.MqttLocationModel;
 import com.delex.delexexpert.model.MqttWorkModel;
 import com.delex.delexexpert.userSession.ExpertSessionManager;
@@ -46,6 +47,8 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import javax.crypto.Cipher;
+
 
 public class LocationService extends Service {
 
@@ -62,7 +65,7 @@ public class LocationService extends Service {
      * 파싱 변수
      */
 
-    private Location mCurrentLocation;  //현재위치
+    private Location mCurrentLocation;//현재위치
 
     //test데이터 변수
     private Gson mGson;
@@ -71,7 +74,7 @@ public class LocationService extends Service {
     private MqttHelper mMqttHelper;
     private boolean isFirstConnected = true;  //mqtt에 처음 연결
     private String mOnOffJsonString;
-    private LocationUtil sLocationUtil = MainActivity3.sLocationUtil;
+    private LocationUtil sLocationUtil;
     public static final String BROADCAST_LOCATION_UPDATE = "broadcast_receiver.LocationReceiver";
     private TinyDB mTinyDB;
     private Timer mLocationTimer;
@@ -90,7 +93,8 @@ public class LocationService extends Service {
     private boolean onWorked = true;
     private boolean offWorked = true;
     private String mIntentAction;
-    private LocationRequest mRocationRequest;
+    public static LocationRequest sLocationRequest;
+    private DataBase mDataBase;
 
     public LocationService() {
     }
@@ -109,12 +113,23 @@ public class LocationService extends Service {
 
         EventBus.getDefault().register(this);
         mGson = new Gson();
+        mDataBase = new DataBase(this);
+
+        sLocationUtil = new LocationUtil(this);
 
         mExpertSessionManager = new ExpertSessionManager(this);
         mClientId = mExpertSessionManager.getUserId();
         mCarNum = mExpertSessionManager.getCarNum();
 
+//        if (mExpertSessionManager.getLocationSetting().equals("출근")) {
+//            mIntentAction = ACTION_START_DATA;
+//            sLocationRequest = sLocationUtil.mHighLocationRequest;
         createNoti(true, "");
+//        } else {
+//            mIntentAction = ACTION_STOP_DATA;
+//            sLocationRequest = sLocationUtil.mOffWorkLocationRequest;
+//            createNoti(true, "퇴근");
+//        }
 
         if (mMqttHelper != null) {
             mMqttHelper.disConnect();
@@ -130,20 +145,22 @@ public class LocationService extends Service {
 
                 if (LocationManager.PROVIDERS_CHANGED_ACTION.equals(action)) {  //위치데이터 허용하는지 체크
 
-                    if (locationOnOffCheck()) {
+                    if (Commonlib.locationOnOffCheck(getApplicationContext())) {
                         //gps 켜짐
-                        Log.d(TAG, "onReceive: gps 켜짐");
+                        if (mCurrentLocation != null) {
+                            mDataBase.writeStateData(true, true, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "");
+                        } else {
+                            mDataBase.writeStateData(true, true, true, "", "");
+                        }
 
-
-
-//                        if (mIsWork) {
-                            sLocationUtil.startLocationUpdates(mRocationRequest);
-//                        } else {
-//                            sLocationUtil.startLocationUpdates(sLocationUtil.mOffWorkLocationRequest);
-//                        }
+                        sLocationUtil.startLocationUpdates(sLocationRequest);
 
                     } else {
-                        Log.d(TAG, "onReceive: gps 안켜짐");
+                        if (mCurrentLocation != null) {
+                            mDataBase.writeStateData(true, true, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "");
+                        } else {
+                            mDataBase.writeStateData(true, true, true, "", "");
+                        }
                         sLocationUtil.stopLocationUpdate();
                         //gps 안켜짐
                     }
@@ -157,20 +174,10 @@ public class LocationService extends Service {
         intentFilter.addAction(LocationManager.PROVIDERS_CHANGED_ACTION);
         registerReceiver(mInternetReceiver, intentFilter);
 
-
 //        setBatteryCheckAlarm(true);
 
     }
 
-    public boolean locationOnOffCheck() {
-        boolean gpsEnable = false;
-        LocationManager manager = (LocationManager) getApplication().getSystemService(Context.LOCATION_SERVICE);
-        if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            gpsEnable = true;
-        }
-
-        return gpsEnable;
-    }
 
 //    /**
 //     * 연결 상태 리시버
@@ -204,41 +211,53 @@ public class LocationService extends Service {
 
         if (intent != null) {
             if (intent.getAction() != null) {
-
                 mIntentAction = intent.getAction();
+                if (mIntentAction != null) {
+                    switch (mIntentAction) {
 
-                switch (mIntentAction) {
-
-                    case ACTION_START_DATA:
-                        Log.d(TAG, "onStartCommand: 출근");
-                        mRocationRequest = sLocationUtil.mHighLocationRequest;
-                        sLocationUtil.stopLocationUpdate();
-                        sLocationUtil.startLocationUpdates(mRocationRequest);
-                        onWorked = false;
-                        createNoti(false, "출근");
-                        break;
-
-                    case ACTION_STOP_DATA:
-                        Log.d(TAG, "onStartCommand: 퇴근");
-                        mRocationRequest = sLocationUtil.mOffWorkLocationRequest;
-                        sLocationUtil.stopLocationUpdate();
-                        sLocationUtil.startLocationUpdates(mRocationRequest);
-                        offWorked = false;
-                        createNoti(false, "퇴근");
-                        break;
-
-
-                    case ACTION_CLICK_NOTIBAR: //노티 클릭
-                        if (getApplication() instanceof BaseApplication) {
-                            if (!((BaseApplication) getApplication()).isReturnedForeground()) {  //화면에 보이지 않을때
-                                //메인 액티비티가 보이지 않을때만 화면 새로 띄우기
-                                Intent intent1 = new Intent(getApplicationContext(), MainActivity3.class);
-                                intent1.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                startActivity(intent1.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                        case ACTION_START_DATA:
+                            sLocationRequest = sLocationUtil.mHighLocationRequest;
+                            sLocationUtil.stopLocationUpdate();
+                            sLocationUtil.startLocationUpdates(sLocationRequest);
+                            onWorked = false;
+                            offWorked = true;
+                            if (mCurrentLocation != null) {
+                                mDataBase.writeStateData(true, true, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "");
                             }
-                        }
+                            createNoti(true, "출근");
+                            break;
+
+                        case ACTION_STOP_DATA:
+                            sLocationRequest = sLocationUtil.mOffWorkLocationRequest;
+                            sLocationUtil.stopLocationUpdate();
+                            sLocationUtil.startLocationUpdates(sLocationRequest);
+                            offWorked = false;
+                            onWorked = true;
+                            if (mCurrentLocation != null) {
+                                mDataBase.writeStateData(false, true, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "");
+                            }
+                            createNoti(false, "퇴근");
+                            break;
+
+
+//                    case ACTION_CLICK_NOTIBAR: //노티 클릭
+//                        if (getApplication() instanceof BaseApplication) {
+//                            if (!((BaseApplication) getApplication()).isReturnedForeground()) {  //화면에 보이지 않을때
+//                                //메인 액티비티가 보이지 않을때만 화면 새로 띄우기
+//                                Intent intent1 = new Intent(getApplicationContext(), MainActivity3.class);
+//                                intent1.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+//                                startActivity(intent1.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+//                            }else {
+//                                Log.d(TAG, "onStartCommand: !((BaseApplication) getApplication()).isReturnedForeground()");
+//                            }
+//                        }else {
+//                            Log.d(TAG, "onStartCommand: getApplication() instanceof BaseApplication");
+//                        }
+                    }
                 }
             }
+        } else {
+            onDestroy();
         }
         return START_STICKY;
     }
@@ -249,20 +268,29 @@ public class LocationService extends Service {
         mMqttHelper = new MqttHelper(this, clientId, new MqttCallbackExtended() {
             @Override
             public void connectComplete(boolean reconnect, String serverURI) {
-                Log.d(TAG, "connectComplete: " + reconnect);
+//                Log.d(TAG, "connectComplete: " + reconnect);
 
-                switch (mIntentAction){
+                switch (mIntentAction) {
                     case ACTION_START_DATA:
+                        offWorked = true;
                         onWorked = false;
+                        if (mCurrentLocation != null) {
+                            mDataBase.writeStateData(true, true, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "");
+                        }
                         break;
 
                     case ACTION_STOP_DATA:
                         offWorked = false;
+                        onWorked = true;
+                        if (mCurrentLocation != null) {
+                            mDataBase.writeStateData(false, true, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "");
+                        }
                         break;
                 }
 
+
                 if (reconnect) {
-                    sLocationUtil.startLocationUpdates(mRocationRequest);
+                    sLocationUtil.startLocationUpdates(sLocationRequest);
                 }
 //                if (mCurrentLocation == null) {
 //                    sLocationUtil.requestLastLocation();
@@ -274,11 +302,16 @@ public class LocationService extends Service {
 
             @Override
             public void connectionLost(Throwable cause) {
-//                Log.d(TAG, "connectionLost: " + cause.getCause());
+                Log.d(TAG, "connectionLost: " + cause);
+                if (mCurrentLocation != null) {
+                    mDataBase.writeStateData(false, false, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "mqtt connectionLost : " + cause);
+                }
+                //                Log.d(TAG, "connectionLost: " + cause.getCause());
 //                Log.d(TAG, "connectionLost: " + cause.getMessage());
 //                Log.d(TAG, "connectionLost: " + cause.getLocalizedMessage());
 //                Log.d(TAG, "connectionLost: " + cause.getStackTrace());
                 sLocationUtil.stopLocationUpdate();
+
 //                if (cause instanceof java.net.SocketException) {
 //
 //                }
@@ -328,17 +361,13 @@ public class LocationService extends Service {
         } else {
             mBLEStateNoti.setContentTitle(message);
         }
-
-
         startForeground(1, mBLEStateNoti.build());
-
     }
 
     private PendingIntent clickNotiPendingIntent() {
 
-        Intent clickNotiIntent = new Intent(this, this.getClass());
-        clickNotiIntent.setAction(ACTION_CLICK_NOTIBAR);
-        PendingIntent pending = PendingIntent.getService(this, 1, clickNotiIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        Intent clickNotiIntent = new Intent(this, MainActivity3.class);
+        PendingIntent pending = PendingIntent.getActivity(this, 1, clickNotiIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         return pending;
     }
 
@@ -347,7 +376,9 @@ public class LocationService extends Service {
         super.onDestroy();
 
 //        setBatteryCheckAlarm(false);
-        sendWorkToMqtt(false, mCurrentLocation);
+        if (mCurrentLocation != null) {
+            sendWorkToMqtt(false, mCurrentLocation);
+        }
         unregisterReceiver(mInternetReceiver);
         sLocationUtil.stopLocationUpdate();
         EventBus.getDefault().unregister(this);
@@ -355,6 +386,35 @@ public class LocationService extends Service {
             mMqttHelper.disConnect();
         }
         stopForeground(true);  //노티피케이션 지우기
+
+        if (mCurrentLocation != null) {
+            mDataBase.writeStateData(false, mMqttHelper.isConnected(), false, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "");
+        }
+
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                try {
+//                    Thread.sleep(10000);
+//                    startDataService();
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//        }).start();
+
+
+    }
+
+    public void startDataService() {
+
+        Intent serviceIntent = new Intent(this, LocationService.class);
+        serviceIntent.setAction(LocationService.ACTION_STOP_DATA);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {  //API 26버전 이상
+            this.startForegroundService(serviceIntent);
+        } else {
+            this.startService(serviceIntent);
+        }
     }
 
 
@@ -369,14 +429,16 @@ public class LocationService extends Service {
 //            sLocationUtil.stopLocationUpdate();
 //            sLocationUtil.startLocationUpdates(sLocationUtil.mOffWorkLocationRequest);
 
-        if (expertEvent instanceof LocationServiceFinishExpertEvent) {  //로그아웃 버튼 클릭시
+        if (expertEvent instanceof LocationServiceFinishExpertEvent) {  //서비스 종료 호출
             stopSelf();
 
         } else if (expertEvent instanceof CurrentLocationExpertEvent) {  //현재 위치 값 업데이트
 
             if (mMqttHelper != null) {
+
                 CurrentLocationExpertEvent currentLocationEvent = (CurrentLocationExpertEvent) expertEvent;
                 Location currentLocation = currentLocationEvent.getLocation();
+                mCurrentLocation = currentLocation;
 
                 if (!onWorked) {
                     //출근하기
@@ -391,6 +453,8 @@ public class LocationService extends Service {
                     sendWorkToMqtt(false, currentLocation);
                     Log.d(TAG, "connectComplete: 퇴근 데이터 보냄");
                 }
+
+                if (currentLocation.getAccuracy() < 20) {
 //                if (mCurrentLocation != null) {
 
 
@@ -402,8 +466,12 @@ public class LocationService extends Service {
 //                    if (oldLat == newLat && oldLon == newLon) {  //위치 데이터가 같을때
 //
 //                    } else {  //위치 데이터가 같지 않을 때
-                mCurrentLocation = currentLocation;
-                sendCurrentLocationToMqtt();
+//                    mCurrentLocation = currentLocation;
+                    sendCurrentLocationToMqtt();
+                }
+                if (mCurrentLocation != null) {
+                    mDataBase.writeStateData(mIsWork, mMqttHelper.isConnected(), true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "");
+                }
 
 //                } else {
 //                    mCurrentLocation = currentLocation;
@@ -423,7 +491,7 @@ public class LocationService extends Service {
         Intent alarmIntent = new Intent(ACTION_BATTERY_CHECK_SERVICE);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 2, alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        long delay = 30 * 60 * 1000;  //설정안 변수로 가져오기
+        long delay = 10 * 1000;  //설정안 변수로 가져오기
 
         if (start) {  //true면 알람 시작
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -501,13 +569,17 @@ public class LocationService extends Service {
      * 출퇴근 메세지 보내기
      */
     public void sendWorkToMqtt(boolean isWork, Location location) {
-        mIsWork = isWork;
+
+        if (mExpertSessionManager.getLocationSetting().equals("출근")) {
+            mIsWork = true;
+        } else {
+            mIsWork = false;
+        }
 
         if (Commonlib.isNetworkAvailable(getApplicationContext())) {
             if (mMqttHelper.isConnected()) {
 
                 MqttWorkModel mqttWorkModel = new MqttWorkModel(mClientId, mCarNum, isWork, location.getLatitude(), location.getLongitude());
-
                 mMqttHelper.publishMessage(mMqttHelper.mWorkTopic, mGson.toJson(mqttWorkModel));
 
             }
@@ -518,14 +590,12 @@ public class LocationService extends Service {
      * 위치데이터 메세지 보내기
      */
     public void sendCurrentLocationToMqtt() {
-        Log.d(TAG, "sendCurrentLocationToMqtt: 위치 데이터 보냄");
         if (Commonlib.isNetworkAvailable(getApplicationContext())) {
             if (mMqttHelper.isConnected()) {
 
                 MqttLocationModel mqttLocationModel = new MqttLocationModel(mClientId, mCarNum, mIsWork, mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
-
                 mMqttHelper.publishMessage(mMqttHelper.mLocationTopic, mGson.toJson(mqttLocationModel));
-
+                Log.d(TAG, "sendCurrentLocationToMqtt: " + mGson.toJson(mqttLocationModel));
             }
         }
     }

@@ -7,6 +7,7 @@ import com.delex.delexexpert.commonLib.TinyDB;
 
 public class ExpertSessionManager {
     private TinyDB tinyDB;
+    private String locationSetting;
     private String userId;
     private String carNum;
     private String password;
@@ -14,6 +15,23 @@ public class ExpertSessionManager {
     private String loginSession;
     private double lat;
     private double lon;
+    private String uuid;
+
+    public String getUuid() {
+        return tinyDB.getString("uuid");
+    }
+
+    public void setUuid(String uuid) {
+        tinyDB.putString("uuid", uuid);
+    }
+
+    public String getLocationSetting() {
+        return tinyDB.getString("location_setting");
+    }
+
+    public void setLocationSetting(String locationSetting) {
+        tinyDB.putString("location_setting", locationSetting);
+    }
 
     public double getLat() {
         return tinyDB.getDouble("lat", 0.0);

@@ -62,6 +62,7 @@ public class MqttHelper {
 
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+                    Log.d(TAG, "onFailure: 연결 실패"+ exception);
                     Log.d(TAG, "connectonFailure: " + exception);
                 }
             });

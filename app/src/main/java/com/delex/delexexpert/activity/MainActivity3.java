@@ -81,7 +81,7 @@ public class MainActivity3 extends AppCompatActivity {
     public static boolean sVisibleActivity;  //화면 보이면 노티 눌렀을때 다시 액티비티 켜지지 않게 설정하는 변수
 
     private String mUrl;  //현재 페이지 url
-    public static LocationUtil sLocationUtil;
+    private LocationUtil sLocationUtil;
     private String mCM;
     private ValueCallback<Uri> mUM;
     private ValueCallback<Uri[]> mUMA;
@@ -108,7 +108,7 @@ public class MainActivity3 extends AppCompatActivity {
     private SessionManager mSessionManager;
     private ExpertSessionManager mExpertSessionManager;
     private Intent mServiceIntent;
-    private Location mCurrentLocation;
+    public static Location sCurrentLocation;
 
 
     @Override
@@ -147,6 +147,8 @@ public class MainActivity3 extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= 21) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
+
+        webSettings.setUserAgentString(webSettings.getUserAgentString() + "|APP/1.2.3");
 
         binding.webView.getSettings().setJavaScriptEnabled(true);
         // JavaScript의 window.open 허용
@@ -190,7 +192,6 @@ public class MainActivity3 extends AppCompatActivity {
                 return true;
             }
         });
-
 
         binding.webView.setWebViewClient(new WebViewClient() {
 
@@ -314,9 +315,10 @@ public class MainActivity3 extends AppCompatActivity {
         String loginPageUrl = getString(R.string.login_url);
         String mainPageUrl = getString(R.string.main_url);
         String loginCheckPageUrl = getString(R.string.login_check_url);
+        String logoutPageUrl = getString(R.string.logout_url);
         Log.d(TAG, "onKeyDown: login" + loginPageUrl);
 
-        if ((keyCode == KeyEvent.KEYCODE_BACK) && (url.equals(loginPageUrl) || url.equals(mainPageUrl) || url.equals(loginCheckPageUrl))) {
+        if ((keyCode == KeyEvent.KEYCODE_BACK) && (url.equals(loginPageUrl) || url.equals(mainPageUrl) || url.equals(loginCheckPageUrl) || url.equals(logoutPageUrl))) {
 
             Log.d(TAG, "onKeyDown: main_url" + url);
 
@@ -342,35 +344,29 @@ public class MainActivity3 extends AppCompatActivity {
 
     public class MyJavascriptInterface {
 
-//        @JavascriptInterface
-//        public void getDeviceToken(String userId) {
-//
-//            Log.d(TAG, "getDeviceToken: ");
-//
-//            mSessionManager.setStringData(SessionManagerPojo.LOGIN_ID, userId);
-//
-//            Commonlib.sendPushToken(userId, mPushToken);
-//
-//        }
-
         @JavascriptInterface
         public void login(String loginId, String loginCarNum) {
+
+            mExpertSessionManager.setLogin(true);
+
+            if (Commonlib.isServiceRunning(MainActivity3.this)) {
+                EventBus.getDefault().post(new LocationServiceFinishExpertEvent());
+            }
 
             Log.d(TAG, "login: ");
 
             mExpertSessionManager.setUserId(loginId);
             mExpertSessionManager.setCarNum(loginCarNum);
+            mExpertSessionManager.setLocationSetting("출근");
             String userId = mExpertSessionManager.getUserId();
             String carNum = mExpertSessionManager.getCarNum();
-
-            Log.d(TAG, "login: userId" + userId + "carNum" + carNum);
 
             String pushToken = mSessionManager.getStringData(SessionManagerPojo.PUSH_TOKEN);
 
             Commonlib.sendPushToken(userId, pushToken);
 
-            if (!(userId == null && userId.isEmpty() && carNum == null && carNum.isEmpty())) {
-                startDataService();
+            if (userId != null && !userId.isEmpty() && carNum != null && !carNum.isEmpty()) {
+                Commonlib.startService(getApplicationContext(), mExpertSessionManager);
             } else {
                 Toast.makeText(MainActivity3.this, "로그인을 재시도 해주세요.", Toast.LENGTH_SHORT).show();
             }
@@ -379,11 +375,21 @@ public class MainActivity3 extends AppCompatActivity {
         @JavascriptInterface
         public void logout() {
             Log.d(TAG, "logout: ");
-            mExpertSessionManager.setUserId("");
-            mExpertSessionManager.setCarNum("");
-            if (Commonlib.isServiceRunning(MainActivity3.this)) {
-                EventBus.getDefault().post(new LocationServiceFinishExpertEvent());
+
+            if (mExpertSessionManager.isLogin()) {
+
+                if (Commonlib.isServiceRunning(MainActivity3.this)) {
+                    String userId = mExpertSessionManager.getUserId();
+                    String carNum = mExpertSessionManager.getCarNum();
+                    mExpertSessionManager.setLocationSetting("퇴근");
+
+                    if (userId != null && !userId.isEmpty() && carNum != null && !carNum.isEmpty()) {
+                        stopDataService();
+                    }
+                }
             }
+
+            mExpertSessionManager.setLogin(false);
         }
 
         @JavascriptInterface
@@ -392,7 +398,9 @@ public class MainActivity3 extends AppCompatActivity {
             String userId = mExpertSessionManager.getUserId();
             String carNum = mExpertSessionManager.getCarNum();
 
-            if (!(userId == null && userId.isEmpty() && carNum == null && carNum.isEmpty())) {
+            mExpertSessionManager.setLocationSetting("출근");
+
+            if (userId != null && !userId.isEmpty() && carNum != null && !carNum.isEmpty()) {
                 startDataService();
             } else {
                 Toast.makeText(MainActivity3.this, "로그인을 재시도 해주세요.", Toast.LENGTH_SHORT).show();
@@ -404,8 +412,9 @@ public class MainActivity3 extends AppCompatActivity {
             Log.d(TAG, "offWork: ");
             String userId = mExpertSessionManager.getUserId();
             String carNum = mExpertSessionManager.getCarNum();
+            mExpertSessionManager.setLocationSetting("퇴근");
 
-            if (!(userId == null && userId.isEmpty() && carNum == null && carNum.isEmpty())) {
+            if (userId != null && !userId.isEmpty() && carNum != null && !carNum.isEmpty()) {
                 stopDataService();
             } else {
                 Toast.makeText(MainActivity3.this, "로그인을 재시도 해주세요.", Toast.LENGTH_SHORT).show();
@@ -468,9 +477,9 @@ public class MainActivity3 extends AppCompatActivity {
         switch (requestCode) {
             case LocationUtil.REQUEST_CHECK_SETTINGS:
                 if (resultCode == Activity.RESULT_OK) {
-                    sLocationUtil.checkLocationSettings();
+                    sLocationUtil.checkLocationSettings(this);
                 } else if (resultCode == RESULT_CANCELED) {
-                    sLocationUtil.checkLocationSettings();
+                    sLocationUtil.checkLocationSettings(this);
                 }
                 break;
         }
@@ -493,8 +502,15 @@ public class MainActivity3 extends AppCompatActivity {
         if (expertEvent instanceof GpsOnOffExpertEvent) {
             GpsOnOffExpertEvent gpsOnOffEvent = (GpsOnOffExpertEvent) expertEvent;
             if (gpsOnOffEvent.isGpsOnOff()) {
+
                 splashThread();
-                startLocationUtil();
+
+                if (sLocationUtil != null) {  //locationUtil 널이 아닐때만 널 처리
+                    sLocationUtil.stopLocationUpdate();
+                    sLocationUtil = null;
+                }
+
+//                startLocationUtil();
             }
         } else if (expertEvent instanceof FinishExpertEvent) {
             android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
@@ -509,19 +525,12 @@ public class MainActivity3 extends AppCompatActivity {
             builder.show();
         } else if (expertEvent instanceof CurrentLocationExpertEvent) {  //현재 위치 값 업데이트
 
-            CurrentLocationExpertEvent currentLocationEvent = (CurrentLocationExpertEvent) expertEvent;
-            Location currentLocation = currentLocationEvent.getLocation();
-            mCurrentLocation = currentLocation;
+//            CurrentLocationExpertEvent currentLocationEvent = (CurrentLocationExpertEvent) expertEvent;
+//            Location currentLocation = currentLocationEvent.getLocation();
+//            sCurrentLocation = currentLocation;
+
+
         }
-    }
-
-    public void startLocationUtil() {
-//        if (CommonLib.getBatteryScale(this) > 20) {
-        sLocationUtil.startLocationUpdates(sLocationUtil.mHighLocationRequest);
-//        } else {
-//            sLocationUtil.startLocationUpdates(sLocationUtil.mBalanceLocationRequest);
-//        }
-
     }
 
     public static void cookieMaker(String url) {
@@ -597,7 +606,7 @@ public class MainActivity3 extends AppCompatActivity {
                 false, new Commonlib.PermissionCheckResponseImpl() {
                     @Override
                     public void granted() {
-                        sLocationUtil.checkLocationSettings();
+                        sLocationUtil.checkLocationSettings(MainActivity3.this);
 
                     }
 
@@ -614,6 +623,13 @@ public class MainActivity3 extends AppCompatActivity {
         setWebview();
 
         binding.webView.loadUrl(getString(R.string.main_url));
+
+//        if (mExpertSessionManager.isLogin()) {
+//            Commonlib.serviceCheckAndStart(this);
+//        }
+//        } else {
+//            binding.webView.loadUrl(getString(R.string.logout_url));
+//        }
         mHandler = new Handler();
 
         final Thread thread = new Thread(new Runnable() {

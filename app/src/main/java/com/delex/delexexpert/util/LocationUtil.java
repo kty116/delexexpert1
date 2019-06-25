@@ -3,6 +3,7 @@ package com.delex.delexexpert.util;
 import android.Manifest;
 import android.app.Activity;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -40,11 +41,12 @@ import java.util.ArrayList;
  */
 public class LocationUtil {
     public static final int REQUEST_CHECK_SETTINGS = 1123;
-    public static final long TEN_UPDATE_INTERVAL_IN_MILLISECONDS = 5 * 1000;
+    public static final long TEN_UPDATE_INTERVAL_IN_MILLISECONDS = 10 * 1000;
     public static final long FIVE_UPDATE_INTERVAL_IN_MILLISECONDS = 5 * 1000;
     public static final long TWO_UPDATE_INTERVAL_IN_MILLISECONDS = 2 * 1000;
 
     public static final long OFF_INTERVAL_IN_MILLISECONDS = 10 * 60 * 1000;
+    private final Context mContext;
     private FusedLocationProviderClient mFusedLocationClient;
     private PendingIntent mPendingIntent;
     protected LocationSettingsRequest mLocationSettingsRequest;
@@ -52,8 +54,6 @@ public class LocationUtil {
     protected Boolean mRequestingLocationUpdates = false;
     private Task<LocationSettingsResponse> mTask;
     private LocationSettingsRequest.Builder mBuilder;
-
-    private Activity mActivity;
 
     private KalmanLatLong mKalmanFilter;
     private float currentSpeed = 0.0f; // meters/second
@@ -63,13 +63,12 @@ public class LocationUtil {
     private ArrayList<LocationRequest> mLocationRequests;
     public LocationRequest mHighLocationRequest;
     //    public LocationRequest mNoPowerLocationRequest;
-    public LocationRequest mBalanceLocationRequest;
     public LocationRequest mOffWorkLocationRequest;
 
 
-    public LocationUtil(Activity activity) {
-        this.mActivity = activity;
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(mActivity);
+    public LocationUtil(Context context) {
+        mContext = context;
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(mContext);
         createLocationRequest();
         buildLocationSettingsRequest();
         mPendingIntent = getUpdateLocationPendingIntent();
@@ -79,8 +78,8 @@ public class LocationUtil {
 
     private PendingIntent getUpdateLocationPendingIntent() {
 
-        Intent locationIntent = new Intent(mActivity, LocationReceiver.class);
-        PendingIntent pending = PendingIntent.getBroadcast(mActivity, 10, locationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        Intent locationIntent = new Intent(mContext, LocationReceiver.class);
+        PendingIntent pending = PendingIntent.getBroadcast(mContext, 10, locationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         return pending;
     }
 
@@ -88,14 +87,20 @@ public class LocationUtil {
 
         //3초 안에 업데이트 되면 nopower로 변경 & 7초 안에 업데이트 안되고 배터리 상태 체크 후 balance or high로 변경
 
-
         mLocationRequests = new ArrayList<>();
 
+        mOffWorkLocationRequest = LocationRequest.create();
+        mOffWorkLocationRequest.setInterval(OFF_INTERVAL_IN_MILLISECONDS);
+        mOffWorkLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+
         mHighLocationRequest = LocationRequest.create();
-//        mHighLocationRequest.setSmallestDisplacement(10);
+        mHighLocationRequest.setSmallestDisplacement(10);
+        mHighLocationRequest.setFastestInterval(FIVE_UPDATE_INTERVAL_IN_MILLISECONDS);
         mHighLocationRequest.setInterval(TEN_UPDATE_INTERVAL_IN_MILLISECONDS);
-        mHighLocationRequest.setFastestInterval(TEN_UPDATE_INTERVAL_IN_MILLISECONDS);
         mHighLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+
+        mLocationRequests.add(mHighLocationRequest);
+        mLocationRequests.add(mOffWorkLocationRequest);
 
 //        mNoPowerLocationRequest = LocationRequest.create();
 //        mNoPowerLocationRequest.setInterval(TEN_UPDATE_INTERVAL_IN_MILLISECONDS);
@@ -107,14 +112,7 @@ public class LocationUtil {
 //        mBalanceLocationRequest.setFastestInterval(FIVE_UPDATE_INTERVAL_IN_MILLISECONDS);
 //        mBalanceLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 
-        mOffWorkLocationRequest = LocationRequest.create();
-        mOffWorkLocationRequest.setInterval(OFF_INTERVAL_IN_MILLISECONDS);
-        mOffWorkLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
-        mLocationRequests.add(mHighLocationRequest);
-//        mLocationRequests.add(mNoPowerLocationRequest);
-//        mLocationRequests.add(mBalanceLocationRequest);
-        mLocationRequests.add(mOffWorkLocationRequest);
 
         //        mHighLocationRequest.setSmallestDisplacement(10);
 //        mHighLocationRequest.setMaxWaitTime(UPDATE_INTERVAL_IN_MILLISECONDS * 2);
@@ -142,11 +140,11 @@ public class LocationUtil {
      * Check if the device's location settings are adequate for the app's needs.
      * </P>
      */
-    public void checkLocationSettings() {
-        SettingsClient client = LocationServices.getSettingsClient(mActivity);
+    public void checkLocationSettings(final Activity activity) {
+        SettingsClient client = LocationServices.getSettingsClient(mContext);
         mTask = client.checkLocationSettings(mBuilder.build());
 
-        mTask.addOnSuccessListener(mActivity, new OnSuccessListener<LocationSettingsResponse>() {
+        mTask.addOnSuccessListener(activity, new OnSuccessListener<LocationSettingsResponse>() {
             @Override
             public void onSuccess(LocationSettingsResponse locationSettingsResponse) {
 //                startLocationUpdates(mHighLocationRequest);
@@ -155,14 +153,14 @@ public class LocationUtil {
             }
         });
 
-        mTask.addOnFailureListener(mActivity, new OnFailureListener() {
+        mTask.addOnFailureListener(activity, new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
                 if (e instanceof ResolvableApiException) {
 //                    EventBus.getDefault().post(new GpsOnOffExpertEvent(false));
                     ResolvableApiException resolvable = (ResolvableApiException) e;
                     try {
-                        resolvable.startResolutionForResult(mActivity,
+                        resolvable.startResolutionForResult(activity,
                                 REQUEST_CHECK_SETTINGS);
                     } catch (IntentSender.SendIntentException e1) {
                         e1.printStackTrace();
@@ -178,7 +176,7 @@ public class LocationUtil {
      */
     public void requestLastLocation() {
         if (mFusedLocationClient != null) {
-            if (ActivityCompat.checkSelfPermission(mActivity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mActivity, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 return;
             }
             mFusedLocationClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
@@ -204,7 +202,7 @@ public class LocationUtil {
         if (!mRequestingLocationUpdates) {
             runStartTimeInMillis = (long) (SystemClock.elapsedRealtimeNanos() / 1000000);
             if (mFusedLocationClient != null) {
-                if (ActivityCompat.checkSelfPermission(mActivity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mActivity, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                     return;
                 }
 
