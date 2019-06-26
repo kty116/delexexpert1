@@ -37,7 +37,7 @@
 
         <!-- 액티비티 -->
         <activity
-            android:name="com.delex.delexexpert.activity.MainActivity3"
+            android:name="com.delex.delexexpert.activity.MainActivity"
             android:launchMode="singleInstance"
             android:screenOrientation="portrait">
 

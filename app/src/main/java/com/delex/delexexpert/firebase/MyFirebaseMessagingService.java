@@ -12,7 +12,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
-import com.delex.delexexpert.activity.MainActivity3;
+import com.delex.delexexpert.activity.MainActivity;
 import com.delex.delexexpert.R;
 import com.delex.delexexpert.firebase.model.PushModel;
 import com.delex.delexexpert.userSession.SessionManager;
@@ -103,7 +103,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
     private PendingIntent clickNotiPendingIntent() {
 
-        Intent clickNotiIntent = new Intent(this, MainActivity3.class);
+        Intent clickNotiIntent = new Intent(this, MainActivity.class);
         PendingIntent pending = PendingIntent.getService(this, 0, clickNotiIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         return pending;
     }

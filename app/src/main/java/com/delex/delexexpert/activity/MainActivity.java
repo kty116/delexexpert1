@@ -7,7 +7,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
-import android.databinding.DataBindingUtil;
 import android.graphics.Bitmap;
 import android.location.Location;
 import android.net.ConnectivityManager;
@@ -30,17 +29,16 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.delex.delexexpert.R;
-import com.delex.delexexpert.databinding.ActivityMainBinding;
 import com.delex.delexexpert.event.CurrentLocationExpertEvent;
 import com.delex.delexexpert.event.ExpertEvent;
 import com.delex.delexexpert.event.FinishExpertEvent;
 import com.delex.delexexpert.event.GpsOnOffExpertEvent;
 import com.delex.delexexpert.event.LocationServiceFinishExpertEvent;
-import com.delex.delexexpert.retrofit.RetrofitLib;
-import com.delex.delexexpert.retrofit.RetrofitUtil;
 import com.delex.delexexpert.service.LocationService;
 import com.delex.delexexpert.userSession.ExpertSessionManager;
 import com.delex.delexexpert.userSession.SessionManager;
@@ -48,18 +46,12 @@ import com.delex.delexexpert.userSession.SessionManagerPojo;
 import com.delex.delexexpert.util.Commonlib;
 import com.delex.delexexpert.util.EditImageUtil;
 import com.delex.delexexpert.util.LocationUtil;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.firebase.iid.FirebaseInstanceId;
-import com.google.firebase.iid.InstanceIdResult;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.HttpCookie;
 import java.net.URL;
 import java.util.List;
@@ -67,15 +59,12 @@ import java.util.Map;
 
 import javax.net.ssl.HttpsURLConnection;
 
-import retrofit2.Call;
+public class MainActivity extends AppCompatActivity {
 
-public class MainActivity3 extends AppCompatActivity {
-
-    public final String TAG = MainActivity3.class.getSimpleName();
+    public final String TAG = MainActivity.class.getSimpleName();
     public final int POST = 1;
     public final int DELETE = 2;
     public final int PUT = 3;
-    private ActivityMainBinding binding;
     private final long FINISH_INTERVAL_TIME = 2000;
     private long backPressedTime = 0;
     public static boolean sVisibleActivity;  //화면 보이면 노티 눌렀을때 다시 액티비티 켜지지 않게 설정하는 변수
@@ -109,13 +98,20 @@ public class MainActivity3 extends AppCompatActivity {
     private ExpertSessionManager mExpertSessionManager;
     private Intent mServiceIntent;
     public static Location sCurrentLocation;
+    private WebView mWebView;
+    private ProgressBar mProgressBar;
+    private FrameLayout mSplashLayout;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
+        setContentView(R.layout.activity_main);
+
+        mWebView = (WebView) findViewById(R.id.webView);
+        mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
+        mSplashLayout = (FrameLayout) findViewById(R.id.splash_layout);
 
         mPref = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         mSessionManager = new SessionManager(this);
@@ -131,7 +127,7 @@ public class MainActivity3 extends AppCompatActivity {
     }
 
     public void setWebview() {
-        WebSettings webSettings = binding.webView.getSettings();
+        WebSettings webSettings = mWebView.getSettings();
 
         webSettings.setSaveFormData(true);
         webSettings.setSupportZoom(true);
@@ -150,12 +146,12 @@ public class MainActivity3 extends AppCompatActivity {
 
         webSettings.setUserAgentString(webSettings.getUserAgentString() + "|APP/1.2.3");
 
-        binding.webView.getSettings().setJavaScriptEnabled(true);
+        mWebView.getSettings().setJavaScriptEnabled(true);
         // JavaScript의 window.open 허용
-        binding.webView.getSettings().setJavaScriptCanOpenWindowsAutomatically(true);
+        mWebView.getSettings().setJavaScriptCanOpenWindowsAutomatically(true);
 
-        binding.webView.addJavascriptInterface(new MyJavascriptInterface(), "Android");
-        binding.webView.setWebChromeClient(new WebChromeClient() {
+        mWebView.addJavascriptInterface(new MyJavascriptInterface(), "Android");
+        mWebView.setWebChromeClient(new WebChromeClient() {
 
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
@@ -193,11 +189,11 @@ public class MainActivity3 extends AppCompatActivity {
             }
         });
 
-        binding.webView.setWebViewClient(new WebViewClient() {
+        mWebView.setWebViewClient(new WebViewClient() {
 
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                binding.progressBar.setVisibility(View.VISIBLE);
+                mProgressBar.setVisibility(View.VISIBLE);
                 mUrl = url;
 
             }
@@ -208,7 +204,7 @@ public class MainActivity3 extends AppCompatActivity {
 
                 mUrl = url;
 
-                binding.progressBar.setVisibility(View.INVISIBLE);
+                mProgressBar.setVisibility(View.INVISIBLE);
 
                 if (!firstPageLoadingCompleted) {  //처음 로딩할때 페이지 로딩 완료를 알려주는 변수
                     //로딩 끝
@@ -222,7 +218,7 @@ public class MainActivity3 extends AppCompatActivity {
                                         mHandler.post(new Runnable() {
                                             @Override
                                             public void run() {
-                                                binding.splashLayout.setVisibility(View.GONE);
+                                                mSplashLayout.setVisibility(View.GONE);
                                             }
                                         });
                                         canEnd = true;
@@ -311,22 +307,25 @@ public class MainActivity3 extends AppCompatActivity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
 
-        String url = binding.webView.getUrl();
+        String url = mWebView.getUrl();
         String loginPageUrl = getString(R.string.login_url);
         String mainPageUrl = getString(R.string.main_url);
         String loginCheckPageUrl = getString(R.string.login_check_url);
         String logoutPageUrl = getString(R.string.logout_url);
         Log.d(TAG, "onKeyDown: login" + loginPageUrl);
 
-        if ((keyCode == KeyEvent.KEYCODE_BACK) && (url.equals(loginPageUrl) || url.equals(mainPageUrl) || url.equals(loginCheckPageUrl) || url.equals(logoutPageUrl))) {
+        if (url != null) {
 
-            Log.d(TAG, "onKeyDown: main_url" + url);
+            if ((keyCode == KeyEvent.KEYCODE_BACK) && (url.equals(loginPageUrl) || url.equals(mainPageUrl) || url.equals(loginCheckPageUrl) || url.equals(logoutPageUrl))) {
 
-        } else if ((keyCode == KeyEvent.KEYCODE_BACK) && binding.webView.canGoBack()) {  //메인인데 뒤로 갈 수 있으면
-            binding.webView.goBack();
-            Log.d(TAG, "onKeyDown dddd: " + mUrl);
+                Log.d(TAG, "onKeyDown: main_url" + url);
 
-            return true;
+            } else if ((keyCode == KeyEvent.KEYCODE_BACK) && mWebView.canGoBack()) {  //메인인데 뒤로 갈 수 있으면
+                mWebView.goBack();
+                Log.d(TAG, "onKeyDown dddd: " + mUrl);
+
+                return true;
+            }
         }
         return super.onKeyDown(keyCode, event);
     }
@@ -349,7 +348,7 @@ public class MainActivity3 extends AppCompatActivity {
 
             mExpertSessionManager.setLogin(true);
 
-            if (Commonlib.isServiceRunning(MainActivity3.this)) {
+            if (Commonlib.isServiceRunning(MainActivity.this)) {
                 EventBus.getDefault().post(new LocationServiceFinishExpertEvent());
             }
 
@@ -368,7 +367,7 @@ public class MainActivity3 extends AppCompatActivity {
             if (userId != null && !userId.isEmpty() && carNum != null && !carNum.isEmpty()) {
                 Commonlib.startService(getApplicationContext(), mExpertSessionManager);
             } else {
-                Toast.makeText(MainActivity3.this, "로그인을 재시도 해주세요.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "로그인을 재시도 해주세요.", Toast.LENGTH_SHORT).show();
             }
         }
 
@@ -378,7 +377,7 @@ public class MainActivity3 extends AppCompatActivity {
 
             if (mExpertSessionManager.isLogin()) {
 
-                if (Commonlib.isServiceRunning(MainActivity3.this)) {
+                if (Commonlib.isServiceRunning(MainActivity.this)) {
                     String userId = mExpertSessionManager.getUserId();
                     String carNum = mExpertSessionManager.getCarNum();
                     mExpertSessionManager.setLocationSetting("퇴근");
@@ -403,7 +402,7 @@ public class MainActivity3 extends AppCompatActivity {
             if (userId != null && !userId.isEmpty() && carNum != null && !carNum.isEmpty()) {
                 startDataService();
             } else {
-                Toast.makeText(MainActivity3.this, "로그인을 재시도 해주세요.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "로그인을 재시도 해주세요.", Toast.LENGTH_SHORT).show();
             }
         }
 
@@ -417,7 +416,7 @@ public class MainActivity3 extends AppCompatActivity {
             if (userId != null && !userId.isEmpty() && carNum != null && !carNum.isEmpty()) {
                 stopDataService();
             } else {
-                Toast.makeText(MainActivity3.this, "로그인을 재시도 해주세요.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "로그인을 재시도 해주세요.", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -567,7 +566,7 @@ public class MainActivity3 extends AppCompatActivity {
     }
 
     private void noNetwork() {
-        AlertDialog.Builder alert_confirm = new AlertDialog.Builder(MainActivity3.this);
+        AlertDialog.Builder alert_confirm = new AlertDialog.Builder(MainActivity.this);
         alert_confirm.setMessage("인터넷 연결 확인 후 다시 시도해주세요.").setCancelable(false).setPositiveButton("재접속",
                 new DialogInterface.OnClickListener() {
                     @Override
@@ -606,7 +605,7 @@ public class MainActivity3 extends AppCompatActivity {
                 false, new Commonlib.PermissionCheckResponseImpl() {
                     @Override
                     public void granted() {
-                        sLocationUtil.checkLocationSettings(MainActivity3.this);
+                        sLocationUtil.checkLocationSettings(MainActivity.this);
 
                     }
 
@@ -622,7 +621,7 @@ public class MainActivity3 extends AppCompatActivity {
 
         setWebview();
 
-        binding.webView.loadUrl(getString(R.string.main_url));
+        mWebView.loadUrl(getString(R.string.main_url));
 
 //        if (mExpertSessionManager.isLogin()) {
 //            Commonlib.serviceCheckAndStart(this);

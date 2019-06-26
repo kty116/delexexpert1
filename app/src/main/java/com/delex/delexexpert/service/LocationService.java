@@ -18,7 +18,7 @@ import android.support.annotation.RequiresApi;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
-import com.delex.delexexpert.activity.MainActivity3;
+import com.delex.delexexpert.activity.MainActivity;
 import com.delex.delexexpert.R;
 import com.delex.delexexpert.commonLib.TinyDB;
 import com.delex.delexexpert.event.CurrentLocationExpertEvent;
@@ -26,7 +26,6 @@ import com.delex.delexexpert.event.ExpertEvent;
 import com.delex.delexexpert.event.LastLocationExpertEvent;
 import com.delex.delexexpert.event.LocationServiceFinishExpertEvent;
 import com.delex.delexexpert.firebase.DataBase;
-import com.delex.delexexpert.firebase.StateModel;
 import com.delex.delexexpert.model.MqttLocationModel;
 import com.delex.delexexpert.model.MqttWorkModel;
 import com.delex.delexexpert.userSession.ExpertSessionManager;
@@ -46,8 +45,6 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.Timer;
 import java.util.TimerTask;
-
-import javax.crypto.Cipher;
 
 
 public class LocationService extends Service {
@@ -244,7 +241,7 @@ public class LocationService extends Service {
 //                        if (getApplication() instanceof BaseApplication) {
 //                            if (!((BaseApplication) getApplication()).isReturnedForeground()) {  //화면에 보이지 않을때
 //                                //메인 액티비티가 보이지 않을때만 화면 새로 띄우기
-//                                Intent intent1 = new Intent(getApplicationContext(), MainActivity3.class);
+//                                Intent intent1 = new Intent(getApplicationContext(), MainActivity.class);
 //                                intent1.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
 //                                startActivity(intent1.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
 //                            }else {
@@ -366,7 +363,7 @@ public class LocationService extends Service {
 
     private PendingIntent clickNotiPendingIntent() {
 
-        Intent clickNotiIntent = new Intent(this, MainActivity3.class);
+        Intent clickNotiIntent = new Intent(this, MainActivity.class);
         PendingIntent pending = PendingIntent.getActivity(this, 1, clickNotiIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         return pending;
     }

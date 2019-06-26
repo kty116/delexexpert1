@@ -3,11 +3,9 @@ package com.delex.delexexpert.util;
 import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.ContentUris;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -15,18 +13,12 @@ import android.content.pm.Signature;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.AnimationDrawable;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
-import android.location.Location;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.support.graphics.drawable.VectorDrawableCompat;
@@ -36,24 +28,13 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.content.ContextCompat;
 import android.telephony.TelephonyManager;
-import android.text.TextUtils;
 import android.util.Base64;
-import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.Display;
 import android.view.View;
-import android.view.ViewDebug;
-import android.view.Window;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import com.delex.delexexpert.R;
-import com.delex.delexexpert.activity.MainActivity3;
 import com.delex.delexexpert.firebase.DataBase;
 import com.delex.delexexpert.retrofit.RetrofitLib;
 import com.delex.delexexpert.retrofit.RetrofitUtil;
@@ -67,7 +48,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.security.MessageDigest;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
 import java.util.List;
 
 import retrofit2.Call;
@@ -192,33 +172,31 @@ public class Commonlib {
 
         if (!isServiceRunning(context)) {  //서비스 실행중 아님
 
-        String userId = expertSessionManager.getUserId();
-        String carNum = expertSessionManager.getCarNum();
+            String userId = expertSessionManager.getUserId();
+            String carNum = expertSessionManager.getCarNum();
 
-        dataBase.writeStateData(false, false, false, "userId - " + userId + " / carNum - " + carNum, "");
+            dataBase.writeStateData(false, false, false, "userId - " + userId + " / carNum - " + carNum, "");
 
-        if (userId != null && !userId.isEmpty() && carNum != null && !carNum.isEmpty()) {
-            startService(context, expertSessionManager);
-        } else {
-            dataBase.writeStateData(false, false, false, "유저 정보 없음 로그아웃 상태", "");
-            openApp(context, context.getPackageName());
-            Toast.makeText(context, "로그인을 해주세요!", Toast.LENGTH_LONG).show();
-        }
-//        }else {
-//            Log.d(TAG, "serviceCheckAndStart: 서비스 실행중");
+            if (userId != null && !userId.isEmpty() && carNum != null && !carNum.isEmpty()) {
+                startService(context, expertSessionManager);
+            } else {
+                dataBase.writeStateData(false, false, false, "유저 정보 없음 로그아웃 상태", "");
+                openApp(context, context.getPackageName());
+                Toast.makeText(context, "로그인을 해주세요!", Toast.LENGTH_LONG).show();
+            }
         }
     }
 
-    public static String getPhoneNumber(Context context) {
-        TelephonyManager telManager = (TelephonyManager) context.getSystemService(context.TELEPHONY_SERVICE);
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_NUMBERS) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-        }
-        String phoneNum = telManager.getLine1Number();
-        if (phoneNum.startsWith("+82")) {
-            phoneNum = phoneNum.replace("+82", "0");
-        }
-        return phoneNum;
-    }
+//    public static String getPhoneNumber(Context context) {
+//        TelephonyManager telManager = (TelephonyManager) context.getSystemService(context.TELEPHONY_SERVICE);
+//        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_NUMBERS) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+//        }
+//        String phoneNum = telManager.getLine1Number();
+//        if (phoneNum.startsWith("+82")) {
+//            phoneNum = phoneNum.replace("+82", "0");
+//        }
+//        return phoneNum;
+//    }
 
     public static boolean openApp(Context context, String packageName) {
         PackageManager manager = context.getPackageManager();
