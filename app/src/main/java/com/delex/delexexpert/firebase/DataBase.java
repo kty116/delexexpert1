@@ -1,6 +1,7 @@
 package com.delex.delexexpert.firebase;
 
 import android.content.Context;
+import android.os.Build;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.widget.Toast;
@@ -23,7 +24,8 @@ import java.util.UUID;
 
 public class DataBase {
     public static final String TAG = DataBase.class.getSimpleName();
-//    private String mPhoneNumber;
+    private final String mAndroidVersion;
+    //    private String mPhoneNumber;
     private String mUUID;
     private String mAppVersion;
     private String mCarNumber;
@@ -35,7 +37,7 @@ public class DataBase {
     private StateModel mStateModels;
     private boolean isFirstLoad = true;
     private ExpertSessionManager mExpertSessionManager;
-    private final String mCurrentTime;
+    private final SimpleDateFormat dayTime;
 
     public DataBase(Context context) {
         mGson = new Gson();
@@ -45,8 +47,8 @@ public class DataBase {
         mExpertSessionManager = new ExpertSessionManager(context);
         mCarNumber = mExpertSessionManager.getCarNum();
         mAppVersion = Commonlib.getVersionValue(context);
-        SimpleDateFormat dayTime = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-        mCurrentTime = dayTime.format(new Date(System.currentTimeMillis()));
+        mAndroidVersion = Build.VERSION.RELEASE+" / "+Build.VERSION.SDK_INT;
+        dayTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
         mUUID = mExpertSessionManager.getUuid();
 
@@ -63,19 +65,21 @@ public class DataBase {
 //        myRef.child("채팅방").child("content").push().setValue(chatContentModel);
 //    }
 
-    public void writeStateData(boolean isWork, boolean isMqttConnection, boolean serviceState, String location, String error) {
+    public void writeStateData(boolean isWork, boolean isMqttConnection, boolean serviceState, String location, String error, String text) {
+        String currentTime = dayTime.format(new Date(System.currentTimeMillis()));
         if (!mCarNumber.isEmpty()) {  //mCarNumber 빈값이 아닐때만 전송
             if (error.isEmpty()) {
-                mStateModels = new StateModel(mCurrentTime, mAppVersion, location, Commonlib.isNetworkAvailable(mContext), Commonlib.locationOnOffCheck(mContext), isWork, isMqttConnection, serviceState, error, "");
+                mStateModels = new StateModel(currentTime, mAppVersion+" / "+mAndroidVersion, location, Commonlib.isNetworkAvailable(mContext), Commonlib.locationOnOffCheck(mContext), isWork, isMqttConnection, serviceState, error, "", text);
             } else {
-                mStateModels = new StateModel(mCurrentTime, mAppVersion, location, Commonlib.isNetworkAvailable(mContext), Commonlib.locationOnOffCheck(mContext), isWork, isMqttConnection, serviceState, error, mCurrentTime);
+                mStateModels = new StateModel(currentTime, mAppVersion+" / "+mAndroidVersion, location, Commonlib.isNetworkAvailable(mContext), Commonlib.locationOnOffCheck(mContext), isWork, isMqttConnection, serviceState, error, currentTime, text);
             }
             myRef.child(mCarNumber).setValue(mStateModels);
+
         } else {
             if (error.isEmpty()) {
-                mStateModels = new StateModel(mCurrentTime, mAppVersion, location, Commonlib.isNetworkAvailable(mContext), Commonlib.locationOnOffCheck(mContext), isWork, isMqttConnection, serviceState, error, "");
+                mStateModels = new StateModel(currentTime, mAppVersion+" / "+mAndroidVersion, location, Commonlib.isNetworkAvailable(mContext), Commonlib.locationOnOffCheck(mContext), isWork, isMqttConnection, serviceState, error, "", text);
             } else {
-                mStateModels = new StateModel(mCurrentTime, mAppVersion, location, Commonlib.isNetworkAvailable(mContext), Commonlib.locationOnOffCheck(mContext), isWork, isMqttConnection, serviceState, error, mCurrentTime);
+                mStateModels = new StateModel(currentTime, mAppVersion+" / "+mAndroidVersion, location, Commonlib.isNetworkAvailable(mContext), Commonlib.locationOnOffCheck(mContext), isWork, isMqttConnection, serviceState, error, currentTime, text);
             }
             myRef.child(mUUID).setValue(mStateModels);
         }

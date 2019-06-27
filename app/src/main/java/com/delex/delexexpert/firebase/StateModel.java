@@ -20,6 +20,7 @@ public class StateModel {
     private boolean isServiceState;
     private String error;
     private String errorTime;
+    private String text;
 
 
 }

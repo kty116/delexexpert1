@@ -175,12 +175,12 @@ public class Commonlib {
             String userId = expertSessionManager.getUserId();
             String carNum = expertSessionManager.getCarNum();
 
-            dataBase.writeStateData(false, false, false, "userId - " + userId + " / carNum - " + carNum, "");
+            dataBase.writeStateData(false, false, false, "userId - " + userId + " / carNum - " + carNum, "", "");
 
             if (userId != null && !userId.isEmpty() && carNum != null && !carNum.isEmpty()) {
                 startService(context, expertSessionManager);
             } else {
-                dataBase.writeStateData(false, false, false, "유저 정보 없음 로그아웃 상태", "");
+                dataBase.writeStateData(false, false, false, "유저 정보 없음 로그아웃 상태", "", "");
                 openApp(context, context.getPackageName());
                 Toast.makeText(context, "로그인을 해주세요!", Toast.LENGTH_LONG).show();
             }
@@ -218,22 +218,33 @@ public class Commonlib {
     }
 
     public static void startService(Context context, ExpertSessionManager expertSessionManager) {
+        DataBase dataBase = new DataBase(context);
         Intent intent = new Intent(context, LocationService.class);
         String locationSetting = expertSessionManager.getLocationSetting();
+
         if (locationSetting != null && !locationSetting.isEmpty()) {
+            dataBase.writeStateData(false, false, false, "locationSetting != null && !locationSetting.isEmpty()", "", "");
             if (locationSetting.equals("출근")) {
+                dataBase.writeStateData(false, false, false, "LocationService.ACTION_START_DATA", "", "");
                 intent.setAction(LocationService.ACTION_START_DATA);
             } else {
+                dataBase.writeStateData(false, false, false, "LocationService.ACTION_STOP_DATA", "", "");
                 intent.setAction(LocationService.ACTION_STOP_DATA);
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {  //API 26버전 이상
-                context.startForegroundService(intent);
-            } else {
-                context.startService(intent);
-            }
+        } else {
+            dataBase.writeStateData(false, false, false, "locationSetting == null || locationSetting.isEmpty()", "", "");
+            expertSessionManager.setLocationSetting("출근");
+            intent.setAction(LocationService.ACTION_START_DATA);
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {  //API 26버전 이상
+            dataBase.writeStateData(false, false, false, "Build.VERSION_CODES.O 이상", "", "");
+            context.startForegroundService(intent);
+        } else {
+            dataBase.writeStateData(false, false, false, "Build.VERSION_CODES.O 이하", "", "");
+            context.startService(intent);
+        }
     }
 
 

@@ -22,11 +22,11 @@ public class LocationServiceStarter extends BroadcastReceiver {
 
         if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
             Log.d(TAG, "onReceive: ACTION_MY_PACKAGE_REPLACED");
-            dataBase.writeStateData(false, false, false, "업데이트 완료", "");
+            dataBase.writeStateData(false, false, false, "업데이트 완료", "","");
             Commonlib.serviceCheckAndStart(context);
 
         } else if (Intent.ACTION_BOOT_COMPLETED.equals(action)) {
-            dataBase.writeStateData(false, false, false, "재부팅 완료", "");
+            dataBase.writeStateData(false, false, false, "재부팅 완료", "","");
             Commonlib.serviceCheckAndStart(context);
         }
     }

@@ -143,8 +143,7 @@ public class MainActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= 21) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
-
-        webSettings.setUserAgentString(webSettings.getUserAgentString() + "|APP/1.2.3");
+        webSettings.setUserAgentString(webSettings.getUserAgentString() + "|APP/" + Commonlib.getVersionValue(this));
 
         mWebView.getSettings().setJavaScriptEnabled(true);
         // JavaScript의 window.open 허용
@@ -351,8 +350,6 @@ public class MainActivity extends AppCompatActivity {
             if (Commonlib.isServiceRunning(MainActivity.this)) {
                 EventBus.getDefault().post(new LocationServiceFinishExpertEvent());
             }
-
-            Log.d(TAG, "login: ");
 
             mExpertSessionManager.setUserId(loginId);
             mExpertSessionManager.setCarNum(loginCarNum);

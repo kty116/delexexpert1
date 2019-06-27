@@ -88,7 +88,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     .setContentText(message)
                     .setAutoCancel(true)
                     .setContentIntent(clickNotiPendingIntent())
-                    .setSmallIcon(R.mipmap.ic_launcher_expert);
+                    .setSmallIcon(R.mipmap.ic_launcher);
 
             if (image != null) {
 //                Bitmap bitmap = getImageFromURL("https://img.insight.co.kr/static/2019/01/21/700/8wps1552c4j3o4q91jn7.jpg");
