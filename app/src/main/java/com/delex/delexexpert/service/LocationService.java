@@ -106,14 +106,12 @@ public class LocationService extends Service {
     public void onCreate() {
         super.onCreate();
 
-        Log.d(TAG, "onCreate: ddddddd");
-
         createNoti(true, "");
         EventBus.getDefault().register(this);
         mGson = new Gson();
 
         mDataBase = new DataBase(this);
-        mDataBase.writeStateData(false, false, true, "서비스 실행", "", "");
+        mDataBase.writeStateData(false, false, true, null, "", "서비스 실행");
 
         sLocationUtil = new LocationUtil(this);
 
@@ -148,18 +146,18 @@ public class LocationService extends Service {
                     if (Commonlib.locationOnOffCheck(getApplicationContext())) {
                         //gps 켜짐
                         if (mCurrentLocation != null) {
-                            mDataBase.writeStateData(true, true, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "", "gps켜짐");
+                            mDataBase.writeStateData(true, true, true, mCurrentLocation, "", "gps켜짐");
                         } else {
-                            mDataBase.writeStateData(true, true, true, "", "", "gps 켜짐");
+                            mDataBase.writeStateData(true, true, true, null, "", "gps 켜짐");
                         }
 
                         sLocationUtil.startLocationUpdates(sLocationRequest);
 
                     } else {
                         if (mCurrentLocation != null) {
-                            mDataBase.writeStateData(true, true, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "", "gps 꺼짐");
+                            mDataBase.writeStateData(true, true, true, mCurrentLocation, "", "gps 꺼짐");
                         } else {
-                            mDataBase.writeStateData(true, true, true, "", "", "gps 꺼짐");
+                            mDataBase.writeStateData(true, true, true, null, "", "gps 꺼짐");
                         }
                         sLocationUtil.stopLocationUpdate();
                         //gps 안켜짐
@@ -177,7 +175,6 @@ public class LocationService extends Service {
 //        setBatteryCheckAlarm(true);
 
     }
-
 
 //    /**
 //     * 연결 상태 리시버
@@ -205,11 +202,8 @@ public class LocationService extends Service {
 //        }
 //    };
 
-    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-
-        Log.d(TAG, "onStartCommand: ddddddd");
 
         if (intent != null) {
             if (intent.getAction() != null) {
@@ -224,9 +218,9 @@ public class LocationService extends Service {
                             onWorked = false;
                             offWorked = true;
                             if (mCurrentLocation != null) {
-                                mDataBase.writeStateData(true, true, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "", "출근");
+                                mDataBase.writeStateData(true, true, true, mCurrentLocation, "", "출근");
                             } else {
-                                mDataBase.writeStateData(true, true, true, "", "", "출근");
+                                mDataBase.writeStateData(true, true, true, null, "", "출근");
 
                             }
                             createNoti(false, "출근");
@@ -239,9 +233,9 @@ public class LocationService extends Service {
                             offWorked = false;
                             onWorked = true;
                             if (mCurrentLocation != null) {
-                                mDataBase.writeStateData(false, true, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "", "퇴근");
+                                mDataBase.writeStateData(false, true, true, mCurrentLocation, "", "퇴근");
                             } else {
-                                mDataBase.writeStateData(false, true, true, "", "", "퇴근");
+                                mDataBase.writeStateData(false, true, true, null, "", "퇴근");
 
                             }
                             createNoti(false, "퇴근");
@@ -283,9 +277,9 @@ public class LocationService extends Service {
                         offWorked = true;
                         onWorked = false;
                         if (mCurrentLocation != null) {
-                            mDataBase.writeStateData(true, true, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "", "mMqttHelper 연결");
+                            mDataBase.writeStateData(true, true, true, mCurrentLocation, "", "mMqttHelper 연결");
                         } else {
-                            mDataBase.writeStateData(true, true, true, "", "", "mMqttHelper 연결");
+                            mDataBase.writeStateData(true, true, true, null, "", "mMqttHelper 연결");
                         }
                         break;
 
@@ -293,9 +287,9 @@ public class LocationService extends Service {
                         offWorked = false;
                         onWorked = true;
                         if (mCurrentLocation != null) {
-                            mDataBase.writeStateData(false, true, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "", "mMqttHelper 연결");
+                            mDataBase.writeStateData(false, true, true, mCurrentLocation, "", "mMqttHelper 연결");
                         } else {
-                            mDataBase.writeStateData(false, true, true, "", "", "mMqttHelper 연결");
+                            mDataBase.writeStateData(false, true, true, null, "", "mMqttHelper 연결");
                         }
                         break;
                 }
@@ -316,9 +310,9 @@ public class LocationService extends Service {
             public void connectionLost(Throwable cause) {
                 Log.d(TAG, "connectionLost: " + cause);
                 if (mCurrentLocation != null) {
-                    mDataBase.writeStateData(false, false, true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "mqtt connectionLost : " + cause, "");
+                    mDataBase.writeStateData(false, false, true, mCurrentLocation, "mqtt connectionLost : " + cause, "");
                 } else {
-                    mDataBase.writeStateData(false, false, true, "", "mqtt connectionLost : " + cause, "");
+                    mDataBase.writeStateData(false, false, true, null, "mqtt connectionLost : " + cause, "");
                 }
                 //                Log.d(TAG, "connectionLost: " + cause.getCause());
 //                Log.d(TAG, "connectionLost: " + cause.getMessage());
@@ -402,9 +396,9 @@ public class LocationService extends Service {
         stopForeground(true);  //노티피케이션 지우기
 
         if (mCurrentLocation != null) {
-            mDataBase.writeStateData(false, mMqttHelper.isConnected(), false, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "", "위치데이터 서비스 죽음");
+            mDataBase.writeStateData(false, mMqttHelper.isConnected(), false, mCurrentLocation, "", "위치데이터 서비스 죽음");
         } else {
-            mDataBase.writeStateData(false, mMqttHelper.isConnected(), false, "", "", "위치데이터 서비스 죽음");
+            mDataBase.writeStateData(false, mMqttHelper.isConnected(), false, null, "", "위치데이터 서비스 죽음");
         }
 
 //        new Thread(new Runnable() {
@@ -475,7 +469,7 @@ public class LocationService extends Service {
                     sendCurrentLocationToMqtt();
                 }
                 if (mCurrentLocation != null) {
-                    mDataBase.writeStateData(mIsWork, mMqttHelper.isConnected(), true, mCurrentLocation.getLatitude() + " / " + mCurrentLocation.getLongitude(), "", "위치데이터 보냄");
+                    mDataBase.writeStateData(mIsWork, mMqttHelper.isConnected(), true, mCurrentLocation, "", "위치데이터 보냄");
                 }
 
 //                } else {
@@ -496,7 +490,7 @@ public class LocationService extends Service {
         Intent alarmIntent = new Intent(ACTION_BATTERY_CHECK_SERVICE);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 2, alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        long delay = 10 * 1000;  //설정안 변수로 가져오기
+        long delay = 10 * 60 * 1000;  //설정안 변수로 가져오기
 
         if (start) {  //true면 알람 시작
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

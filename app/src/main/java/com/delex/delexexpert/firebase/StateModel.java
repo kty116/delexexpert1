@@ -10,10 +10,15 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 public class StateModel {
+    private String modelName;
+    private int apiLevel;
+    private String androidVersion;
+    private String carNumber;
+    private String userId;
     private String lastLocationTime;
     private String appVersion;
-    private String lastLocation;
-    private boolean isNetworkState;
+    private double lat;
+    private double lon;
     private boolean isGpsState;
     private boolean isWork;
     private boolean isMqttConnection;

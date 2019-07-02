@@ -35,6 +35,8 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.delex.delexexpert.activity.MainActivity;
+import com.delex.delexexpert.application.BaseApplication;
 import com.delex.delexexpert.firebase.DataBase;
 import com.delex.delexexpert.retrofit.RetrofitLib;
 import com.delex.delexexpert.retrofit.RetrofitUtil;
@@ -42,6 +44,8 @@ import com.delex.delexexpert.service.LocationService;
 import com.delex.delexexpert.userSession.ExpertSessionManager;
 import com.gun0912.tedpermission.PermissionListener;
 import com.gun0912.tedpermission.TedPermission;
+
+import org.greenrobot.eventbus.EventBus;
 
 import java.io.BufferedInputStream;
 import java.net.URL;
@@ -166,23 +170,27 @@ public class Commonlib {
     }
 
 
-    public static void serviceCheckAndStart(Context context) {
-        DataBase dataBase = new DataBase(context);
-        ExpertSessionManager expertSessionManager = new ExpertSessionManager(context);
+    public static void serviceCheckAndStart(Context context, boolean isAction) {
 
-        if (!isServiceRunning(context)) {  //서비스 실행중 아님
+        if (isAction) {
+            DataBase dataBase = new DataBase(context);
+            ExpertSessionManager expertSessionManager = new ExpertSessionManager(context);
 
-            String userId = expertSessionManager.getUserId();
-            String carNum = expertSessionManager.getCarNum();
+            if (!isServiceRunning(context)) {  //서비스 실행중 아님
 
-            dataBase.writeStateData(false, false, false, "userId - " + userId + " / carNum - " + carNum, "", "");
+                String userId = expertSessionManager.getUserId();
+                String carNum = expertSessionManager.getCarNum();
 
-            if (userId != null && !userId.isEmpty() && carNum != null && !carNum.isEmpty()) {
-                startService(context, expertSessionManager);
-            } else {
-                dataBase.writeStateData(false, false, false, "유저 정보 없음 로그아웃 상태", "", "");
-                openApp(context, context.getPackageName());
-                Toast.makeText(context, "로그인을 해주세요!", Toast.LENGTH_LONG).show();
+                if (userId != null && !userId.isEmpty() && carNum != null && !carNum.isEmpty()) {
+
+                    startService(context, expertSessionManager);
+                    dataBase.writeStateData(false, false, false, null, "", "유저 정보 있음");
+
+                } else {
+                    dataBase.writeStateData(false, false, false, null, "", "유저 정보 없음 로그아웃 상태");
+                    openApp(context);
+                    Toast.makeText(context, "로그인을 해주세요!", Toast.LENGTH_LONG).show();
+                }
             }
         }
     }
@@ -198,51 +206,57 @@ public class Commonlib {
 //        return phoneNum;
 //    }
 
-    public static boolean openApp(Context context, String packageName) {
-        PackageManager manager = context.getPackageManager();
-        try {
-            Intent i = manager.getLaunchIntentForPackage(packageName);
-            if (i == null) {
-                throw new PackageManager.NameNotFoundException();
+    public static void openApp(Context context) {
+        Intent intent = new Intent(context, MainActivity.class);
+        context.startActivity(intent);
+//        PackageManager manager = context.getPackageManager();
+//        try {
+//            Intent i = manager.getLaunchIntentForPackage(packageName);
+//            if (i == null) {
+//                throw new PackageManager.NameNotFoundException();
+//            }
+//            i.addCategory(Intent.CATEGORY_LAUNCHER);
+//            context.startActivity(i);
+//            return true;
+//        } catch (PackageManager.NameNotFoundException e) {
+//            e.printStackTrace();
+//            return false;
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return false;
+//        }
+    }
+
+    public static boolean isAppRunning(Context context) {
+        ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> procInfos = activityManager.getRunningAppProcesses();
+        for (int i = 0; i < procInfos.size(); i++) {
+            if (procInfos.get(i).processName.equals(context.getPackageName())) {
+                return true;
             }
-            i.addCategory(Intent.CATEGORY_LAUNCHER);
-            context.startActivity(i);
-            return true;
-        } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
-            return false;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
         }
+        return false;
     }
 
     public static void startService(Context context, ExpertSessionManager expertSessionManager) {
-        DataBase dataBase = new DataBase(context);
         Intent intent = new Intent(context, LocationService.class);
         String locationSetting = expertSessionManager.getLocationSetting();
 
         if (locationSetting != null && !locationSetting.isEmpty()) {
-            dataBase.writeStateData(false, false, false, "locationSetting != null && !locationSetting.isEmpty()", "", "");
             if (locationSetting.equals("출근")) {
-                dataBase.writeStateData(false, false, false, "LocationService.ACTION_START_DATA", "", "");
                 intent.setAction(LocationService.ACTION_START_DATA);
             } else {
-                dataBase.writeStateData(false, false, false, "LocationService.ACTION_STOP_DATA", "", "");
                 intent.setAction(LocationService.ACTION_STOP_DATA);
             }
 
         } else {
-            dataBase.writeStateData(false, false, false, "locationSetting == null || locationSetting.isEmpty()", "", "");
             expertSessionManager.setLocationSetting("출근");
             intent.setAction(LocationService.ACTION_START_DATA);
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {  //API 26버전 이상
-            dataBase.writeStateData(false, false, false, "Build.VERSION_CODES.O 이상", "", "");
             context.startForegroundService(intent);
         } else {
-            dataBase.writeStateData(false, false, false, "Build.VERSION_CODES.O 이하", "", "");
             context.startService(intent);
         }
     }

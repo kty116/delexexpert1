@@ -1,9 +1,9 @@
 <resources>
     <string name="app_name">델렉스 엑스퍼트</string>
-    <string name="main_url">http://deltaon.loginex.co.kr/expert/</string>
-    <string name="login_url">http://deltaon.loginex.co.kr/expert/login</string>
-    <string name="login_check_url">http://deltaon.loginex.co.kr/expert/invoice/login</string>
-    <string name="logout_url">http://deltaon.loginex.co.kr/expert/logout</string>
+    <string name="main_url">http://office.delta-on.com/expert/</string>
+    <string name="login_url">http://office.delta-on.com/expert/login</string>
+    <string name="login_check_url">http://office.delta-on.com/expert/invoice/login</string>
+    <string name="logout_url">http://office.delta-on.com/expert/logout</string>
     <!--<string name="login_url">http://driver.delta-on.com/login.php</string>-->
     <!--<string name="main_url">https://m.naver.com</string>-->
 

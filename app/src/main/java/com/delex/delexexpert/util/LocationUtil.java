@@ -94,7 +94,7 @@ public class LocationUtil {
         mOffWorkLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
         mHighLocationRequest = LocationRequest.create();
-        mHighLocationRequest.setSmallestDisplacement(10);
+        mHighLocationRequest.setSmallestDisplacement(15);
         mHighLocationRequest.setFastestInterval(FIVE_UPDATE_INTERVAL_IN_MILLISECONDS);
         mHighLocationRequest.setInterval(TEN_UPDATE_INTERVAL_IN_MILLISECONDS);
         mHighLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);

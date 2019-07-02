@@ -2,6 +2,7 @@ package com.delex.delexexpert.activity;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -101,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
     private WebView mWebView;
     private ProgressBar mProgressBar;
     private FrameLayout mSplashLayout;
+    private AlertDialog.Builder mAlertConfirm;
 
 
     @Override
@@ -237,10 +239,22 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                Log.d(TAG, "shouldOverrideUrlLoading: " + url);
-                mUrl = url;
-                view.loadUrl(url);
-                return true;
+
+                if (url.contains("http://market.android.com")) {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.setData(Uri.parse(url));
+                        Activity host = (Activity) view.getContext();
+                        host.startActivity(intent);
+                        return true;
+                    } catch (ActivityNotFoundException e) {
+                        // Google Play app is not installed, you may want to open the app store link
+                        Uri uri = Uri.parse(url);
+                        view.loadUrl("http://play.google.com/store/apps/" + uri.getHost() + "?" + uri.getQuery());
+                        return false;
+                    }
+                }
+                return false;
             }
         });
 
@@ -253,6 +267,7 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
 
         sVisibleActivity = true;
+
 
 //        SharedPreferences.Editor editor = mPref.edit();
 //        editor.putInt(MyFirebaseMessagingService.PUSH_COUNT, 0);
@@ -311,18 +326,12 @@ public class MainActivity extends AppCompatActivity {
         String mainPageUrl = getString(R.string.main_url);
         String loginCheckPageUrl = getString(R.string.login_check_url);
         String logoutPageUrl = getString(R.string.logout_url);
-        Log.d(TAG, "onKeyDown: login" + loginPageUrl);
-
         if (url != null) {
 
             if ((keyCode == KeyEvent.KEYCODE_BACK) && (url.equals(loginPageUrl) || url.equals(mainPageUrl) || url.equals(loginCheckPageUrl) || url.equals(logoutPageUrl))) {
 
-                Log.d(TAG, "onKeyDown: main_url" + url);
-
             } else if ((keyCode == KeyEvent.KEYCODE_BACK) && mWebView.canGoBack()) {  //메인인데 뒤로 갈 수 있으면
                 mWebView.goBack();
-                Log.d(TAG, "onKeyDown dddd: " + mUrl);
-
                 return true;
             }
         }
@@ -563,8 +572,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void noNetwork() {
-        AlertDialog.Builder alert_confirm = new AlertDialog.Builder(MainActivity.this);
-        alert_confirm.setMessage("인터넷 연결 확인 후 다시 시도해주세요.").setCancelable(false).setPositiveButton("재접속",
+        mAlertConfirm = new AlertDialog.Builder(MainActivity.this);
+        mAlertConfirm.setMessage("인터넷 연결 확인 후 다시 시도해주세요.").setCancelable(false).setPositiveButton("재접속",
                 new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -576,7 +585,7 @@ public class MainActivity extends AppCompatActivity {
                 finish();
             }
         });
-        AlertDialog alert = alert_confirm.create();
+        AlertDialog alert = mAlertConfirm.create();
         alert.show();
     }
 
@@ -620,12 +629,6 @@ public class MainActivity extends AppCompatActivity {
 
         mWebView.loadUrl(getString(R.string.main_url));
 
-//        if (mExpertSessionManager.isLogin()) {
-//            Commonlib.serviceCheckAndStart(this);
-//        }
-//        } else {
-//            binding.webView.loadUrl(getString(R.string.logout_url));
-//        }
         mHandler = new Handler();
 
         final Thread thread = new Thread(new Runnable() {
@@ -633,12 +636,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
 
-//                try {
-//                    Thread.sleep(1000);
                 loadingConfirm = true;
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
 
             }
         });
